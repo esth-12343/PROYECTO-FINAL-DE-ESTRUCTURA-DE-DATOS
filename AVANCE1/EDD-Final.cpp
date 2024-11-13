@@ -39,9 +39,25 @@ public:
           valence(valence), tempo(tempo), duration_ms(duration_ms),
           time_signature(time_signature) {}
 
-    string getTrackName() const { return track_name; }
     string getArtistName() const { return artist_name; }
-    // Otros getters según sea necesario...
+    string getTrackName() const { return track_name; }
+    string getTrackId() const { return track_id; }
+    int getPopularity() const { return popularity; }
+    int getYear() const { return year; }
+    string getGenre() const { return genre; }
+    float getDanceability() const { return danceability; }
+    float getEnergy() const { return energy; }
+    int getKey() const { return key; }
+    float getLoudness() const { return loudness; }
+    bool getMode() const { return mode; }
+    float getSpeechiness() const { return speechiness; }
+    float getAcousticness() const { return acousticness; }
+    float getInstrumentalness() const { return instrumentalness; }
+    float getLiveness() const { return liveness; }
+    float getValence() const { return valence; }
+    float getTempo() const { return tempo; }
+    int getDurationMs() const { return duration_ms; }
+    int getTimeSignature() const { return time_signature; }
 };
 
 class Nodo {
@@ -153,15 +169,20 @@ public:
         }
 
         string linea;
+
+        if (getline(archivo, linea)) {
+        }
+
         while (getline(archivo, linea)) {
             stringstream ss(linea);
-            string artist_name, track_name, track_id, genre;
+            string dummy, artist_name, track_name, track_id, genre;
             int popularity, year, key, duration_ms, time_signature;
             float danceability, energy, loudness, speechiness, acousticness;
             float instrumentalness, liveness, valence, tempo;
             bool mode;
 
             // Leer cada campo separado por comas
+            getline(ss, dummy, ',');
             getline(ss, artist_name, ',');
             getline(ss, track_name, ',');
             getline(ss, track_id, ',');
@@ -233,12 +254,14 @@ int main() {
 
     // Imprimir las canciones para verificar que fueron cargadas
     lista.imprimirCanciones();
-
+    /*
     // Ejemplo de agregar, eliminar y cambiar de posición
     Cancion nuevaCancion("Nuevo Artista", "Nueva Cancion", "1234", 90, 2021, "Pop", 0.8, 0.9, 5, -5.0, true, 0.1, 0.2, 0.0, 0.3, 0.5, 120.0, 200000, 4);
     lista.agregar_cancion(nuevaCancion);
+    lista.imprimirCanciones();
     lista.eliminar_cancion("Nueva Cancion");
     lista.cambiar_orden(0, 2);
+    lista.imprimirCanciones();*/
 
     return 0;
 }
