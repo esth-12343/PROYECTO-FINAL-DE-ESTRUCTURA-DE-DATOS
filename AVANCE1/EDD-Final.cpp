@@ -71,22 +71,18 @@ public:
 class ListaReproduccion {
 private:
     Nodo* cabeza;
+    Nodo* ultimo;
     int tamano;
-
 public:
-    ListaReproduccion() : cabeza(nullptr), tamano(0) {}
+    ListaReproduccion() : cabeza(nullptr), ultimo(nullptr), tamano(0) {}
 
-    // Función para agregar una canción al final de la lista
     void agregar_cancion(const Cancion& c) {
         Nodo* nuevo = new Nodo(c);
         if (!cabeza) {
-            cabeza = nuevo;
+            cabeza = ultimo = nuevo;
         } else {
-            Nodo* temp = cabeza;
-            while (temp->siguiente) {
-                temp = temp->siguiente;
-            }
-            temp->siguiente = nuevo;
+            ultimo->siguiente = nuevo;
+            ultimo = nuevo;
         }
         tamano++;
     }
@@ -250,10 +246,10 @@ int main() {
     ListaReproduccion lista;
 
     // Leer el archivo CSV y agregar canciones a la lista
-    lista.leerArchivoCSV("canciones.csv");
+    lista.leerArchivoCSV("spotify_data.csv");
 
     // Imprimir las canciones para verificar que fueron cargadas
-    lista.imprimirCanciones();
+    //lista.imprimirCanciones();
     /*
     // Ejemplo de agregar, eliminar y cambiar de posición
     Cancion nuevaCancion("Nuevo Artista", "Nueva Cancion", "1234", 90, 2021, "Pop", 0.8, 0.9, 5, -5.0, true, 0.1, 0.2, 0.0, 0.3, 0.5, 120.0, 200000, 4);
