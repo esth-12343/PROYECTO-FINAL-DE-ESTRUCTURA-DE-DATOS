@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 using namespace std;
 
 class Cancion {
@@ -60,24 +61,24 @@ public:
     int getTimeSignature() const { return time_signature; }
 };
 
-class Nodo {
+class NodoLista {
 public:
     Cancion cancion;
-    Nodo* siguiente;
+    NodoLista* siguiente;
 
-    Nodo(const Cancion& c) : cancion(c), siguiente(nullptr) {}
+    NodoLista(const Cancion& c) : cancion(c), siguiente(nullptr) {}
 };
 
 class ListaReproduccion {
 private:
-    Nodo* cabeza;
-    Nodo* ultimo;
+    NodoLista* cabeza;
+    NodoLista* ultimo;
     int tamano;
 public:
     ListaReproduccion() : cabeza(nullptr), ultimo(nullptr), tamano(0) {}
 
     void agregar_cancion(const Cancion& c) {
-        Nodo* nuevo = new Nodo(c);
+        NodoLista* nuevo = new NodoLista(c);
         if (!cabeza) {
             cabeza = ultimo = nuevo;
         } else {
@@ -89,8 +90,8 @@ public:
 
     // Función para eliminar una canción por su nombre
     void eliminar_cancion(const string& nombreCancion) {
-        Nodo* temp = cabeza;
-        Nodo* anterior = nullptr;
+        NodoLista* temp = cabeza;
+        NodoLista* anterior = nullptr;
 
         while (temp && temp->cancion.getTrackName() != nombreCancion) {
             anterior = temp;
@@ -121,16 +122,16 @@ public:
         if (posicion_actual == nueva_posicion) return;
 
         // Obtener el nodo en la posición actual y su anterior
-        Nodo* temp = cabeza;
-        Nodo* anterior_actual = nullptr;
+        NodoLista* temp = cabeza;
+        NodoLista* anterior_actual = nullptr;
 
         for (int i = 0; i < posicion_actual; ++i) {
             anterior_actual = temp;
             temp = temp->siguiente;
         }
-        Nodo* cancion_a_mover = temp;
+        NodoLista* cancion_a_mover = temp;
 
-        // Remover el nodo de la posición actual
+        // Remover el NodoLista de la posición actual
         if (anterior_actual) {
             anterior_actual->siguiente = cancion_a_mover->siguiente;
         } else {
@@ -139,7 +140,7 @@ public:
 
         // Insertar el nodo en la nueva posición
         temp = cabeza;
-        Nodo* anterior_nueva = nullptr;
+        NodoLista* anterior_nueva = nullptr;
         for (int i = 0; i < nueva_posicion; ++i) {
             anterior_nueva = temp;
             temp = temp->siguiente;
@@ -156,76 +157,9 @@ public:
         cout << "La canción ha sido movida de la posición " << posicion_actual << " a " << nueva_posicion << endl;
     }
 
-    // Función para leer un archivo CSV y agregar las canciones a la lista
-    void leerArchivoCSV(const string& nombreArchivo) {
-        ifstream archivo(nombreArchivo);
-        if (!archivo.is_open()) {
-            cout << "No se pudo abrir el archivo.\n";
-            return;
-        }
-
-        string linea;
-
-        if (getline(archivo, linea)) {
-        }
-
-        while (getline(archivo, linea)) {
-            stringstream ss(linea);
-            string dummy, artist_name, track_name, track_id, genre;
-            int popularity, year, key, duration_ms, time_signature;
-            float danceability, energy, loudness, speechiness, acousticness;
-            float instrumentalness, liveness, valence, tempo;
-            bool mode;
-
-            // Leer cada campo separado por comas
-            getline(ss, dummy, ',');
-            getline(ss, artist_name, ',');
-            getline(ss, track_name, ',');
-            getline(ss, track_id, ',');
-            ss >> popularity;
-            ss.ignore(1);
-            ss >> year;
-            ss.ignore(1);
-            getline(ss, genre, ',');
-            ss >> danceability;
-            ss.ignore(1);
-            ss >> energy;
-            ss.ignore(1);
-            ss >> key;
-            ss.ignore(1);
-            ss >> loudness;
-            ss.ignore(1);
-            ss >> mode;
-            ss.ignore(1);
-            ss >> speechiness;
-            ss.ignore(1);
-            ss >> acousticness;
-            ss.ignore(1);
-            ss >> instrumentalness;
-            ss.ignore(1);
-            ss >> liveness;
-            ss.ignore(1);
-            ss >> valence;
-            ss.ignore(1);
-            ss >> tempo;
-            ss.ignore(1);
-            ss >> duration_ms;
-            ss.ignore(1);
-            ss >> time_signature;
-
-            Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
-                            danceability, energy, key, loudness, mode, speechiness,
-                            acousticness, instrumentalness, liveness, valence, tempo,
-                            duration_ms, time_signature);
-            agregar_cancion(cancion);
-        }
-
-        archivo.close();
-    }
-
     // Función para imprimir la lista de canciones
     void imprimirCanciones() const {
-        Nodo* temp = cabeza;
+        NodoLista* temp = cabeza;
         while (temp) {
             cout << "Artista: " << temp->cancion.getArtistName()
                  << ", Título: " << temp->cancion.getTrackName() << endl;
@@ -235,18 +169,85 @@ public:
 
     ~ListaReproduccion() {
         while (cabeza) {
-            Nodo* temp = cabeza;
+            NodoLista* temp = cabeza;
             cabeza = cabeza->siguiente;
             delete temp;
         }
     }
 };
 
+// Función para leer un archivo CSV y agregar las canciones
+void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion lista) {
+    ifstream archivo(nombreArchivo);
+    if (!archivo.is_open()) {
+        cout << "No se pudo abrir el archivo.\n";
+        return;
+    }
+
+    string linea;
+
+    if (getline(archivo, linea)) {
+    }
+
+    while (getline(archivo, linea)) {
+        stringstream ss(linea);
+        string dummy, artist_name, track_name, track_id, genre;
+        int popularity, year, key, duration_ms, time_signature;
+        float danceability, energy, loudness, speechiness, acousticness;
+        float instrumentalness, liveness, valence, tempo;
+        bool mode;
+
+        // Leer cada campo separado por comas
+        getline(ss, dummy, ',');
+        getline(ss, artist_name, ',');
+        getline(ss, track_name, ',');
+        getline(ss, track_id, ',');
+        ss >> popularity;
+        ss.ignore(1);
+        ss >> year;
+        ss.ignore(1);
+        getline(ss, genre, ',');
+        ss >> danceability;
+        ss.ignore(1);
+        ss >> energy;
+        ss.ignore(1);
+        ss >> key;
+        ss.ignore(1);
+        ss >> loudness;
+        ss.ignore(1);
+        ss >> mode;
+        ss.ignore(1);
+        ss >> speechiness;
+        ss.ignore(1);
+        ss >> acousticness;
+        ss.ignore(1);
+        ss >> instrumentalness;
+        ss.ignore(1);
+        ss >> liveness;
+        ss.ignore(1);
+        ss >> valence;
+        ss.ignore(1);
+        ss >> tempo;
+        ss.ignore(1);
+        ss >> duration_ms;
+        ss.ignore(1);
+        ss >> time_signature;
+
+        Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
+                        danceability, energy, key, loudness, mode, speechiness,
+                        acousticness, instrumentalness, liveness, valence, tempo,
+                        duration_ms, time_signature);
+        lista.agregar_cancion(cancion);
+    }
+
+    archivo.close();
+}
+
 int main() {
     ListaReproduccion lista;
 
     // Leer el archivo CSV y agregar canciones a la lista
-    lista.leerArchivoCSV("spotify_data.csv");
+    leerArchivoCSV("spotify_data.csv", lista);
 
     // Imprimir las canciones para verificar que fueron cargadas
     //lista.imprimirCanciones();
