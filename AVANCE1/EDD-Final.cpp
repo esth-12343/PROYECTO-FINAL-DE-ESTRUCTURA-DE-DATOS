@@ -3,11 +3,12 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <map>
-#include <memory>
+#include <windows.h>
+#include <algorithm>
+#include <locale>
+
 using namespace std;
 
-// Clase Cancion
 class Cancion {
 private:
     string artist_name;
@@ -31,8 +32,7 @@ private:
     int time_signature;
 
 public:
-    // Constructor
-    Cancion(int indice, string artist_name, string track_name, string track_id, int popularity, int year,
+    Cancion(string artist_name, string track_name, string track_id, int popularity, int year,
           string genre, float danceability, float energy, int key, float loudness, bool mode,
           float speechiness, float acousticness, float instrumentalness, float liveness,
           float valence, float tempo, int duration_ms, int time_signature)
@@ -44,7 +44,6 @@ public:
           valence(valence), tempo(tempo), duration_ms(duration_ms),
           time_signature(time_signature) {}
 
-    // Métodos getter
     string getArtistName() const { return artist_name; }
     string getTrackName() const { return track_name; }
     string getTrackId() const { return track_id; }
@@ -65,240 +64,457 @@ public:
     int getDurationMs() const { return duration_ms; }
     int getTimeSignature() const { return time_signature; }
 
-    // Método para imprimir información de la canción
-    void imprimir() {
-        cout << "|Artist NAME| " << artist_name << endl;
-        cout << "|Track NAME| " << track_name << endl;
-        cout << "|Track ID| " << track_id << endl;
-        cout << "|Popularidad| " << popularity << endl;
-        cout << "|Año| " << year << endl;
-        cout << "|Genre| " << genre << endl;
-        cout << "|Danceability| " << danceability << endl;
-        cout << "|Energy| " << energy << endl;
-        cout << "|Key| " << key << endl;
-        cout << "|Loudness| " << loudness << endl;
-        cout << "|Mode| " << mode << endl;
-        cout << "|Speechiness| " << speechiness << endl;
-        cout << "|Acousticness| " << acousticness << endl;
-        cout << "|Instrumentalness| " << instrumentalness << endl;
-        cout << "|Liveness| " << liveness << endl;
-        cout << "|Valence| " << valence << endl;
-        cout << "|Tempo| " << tempo << endl;
-        cout << "|Duration MS| " << duration_ms << endl;
-        cout << "|Time SIGNATURE| " << time_signature << endl;
-    }
+    void imprimir();
 };
 
-// Nodo de Trie
-struct NodoTrie {
-    map<char, NodoTrie*> hijos;
+void Cancion::imprimir() {
+    cout << "|Artist NAME| " << artist_name << endl;
+    cout << "|Track NAME| " << track_name << endl;
+    cout << "|Track ID| " << track_id << endl;
+    cout << "|Popularidad| " << popularity << endl;
+    cout << "|Año| " << year << endl;
+    cout << "|Genre| " << genre << endl;
+    cout << "|Danceability| " << danceability << endl;
+    cout << "|Energy| " << energy << endl;
+    cout << "|Key| " << key << endl;
+    cout << "|Loudness| " << loudness << endl;
+    cout << "|Mode| " << mode << endl;
+    cout << "|Speechiness| " << speechiness << endl;
+    cout << "|Acousticness| " << acousticness << endl;
+    cout << "|Instrumentalness| " << instrumentalness << endl;
+    cout << "|Liveness| " << liveness << endl;
+    cout << "|Valence| " << valence << endl;
+    cout << "|Tempo| " << tempo << endl;
+    cout << "|Duration MS| " << duration_ms << endl;
+    cout << "|Time SIGNATURE| " << time_signature << endl;
+}
+
+struct TrieNode {
+    TrieNode* child[256];
     vector<Cancion*> canciones;
+    bool wordEnd;
+
+    TrieNode() {
+        wordEnd = false;
+        for (int i = 0; i < 76; i++) {
+            child[i] = NULL;
+        }
+    }
+
+    int getIndex(char ch) {
+        if (ch >= 'a' && ch <= 'z') return ch - 'a';
+        if (ch >= 'A' && ch <= 'Z') return ch - 'A' + 26;
+        if (ch == ' ') return 52;
+        if (ch == '\'') return 53;
+        if (ch == '-') return 54;
+        if (ch == '.') return 55;
+        if (ch >= '0' && ch <= '9') return ch - '0' + 56;
+        if (ch == '!') return 66;
+        if (ch == '@') return 67;
+        if (ch == '#') return 68;
+        if (ch == '$') return 69;
+        if (ch == '%') return 70;
+        if (ch == '_') return 71;
+        if (ch == '&') return 72;
+        if (ch == '*') return 73;
+        if (ch == '(') return 74;
+        if (ch == ')') return 75;
+
+        return -1;
+    }
 };
 
-// Clase Trie
-class Trie {
-private:
-    NodoTrie* raiz;
+void insertKey(TrieNode* root, Cancion* cancion, const string& key) {
+    TrieNode* curr = root;
+    for (char c : key) {
+        int index = curr->getIndex(c);
+        if (index == -1) {
+            cout << key << " Caracter no válido: " << c << endl;
+            continue;
+        }
 
+        if (curr->child[index] == nullptr) {
+            TrieNode* newNode = new TrieNode();
+            curr->child[index] = newNode;
+        }
+        curr = curr->child[index];
+    }
+    curr->wordEnd = true;
+    curr->canciones.push_back(cancion);
+}
+
+bool deleteFromTrie(TrieNode* root, const string& key, int depth = 0) {
+    if (!root) return false;
+
+    if (depth == key.size()) {
+        if (root->wordEnd) {
+            root->wordEnd = false;
+            root->canciones.clear();
+        }
+        for (int i = 0; i < 57; ++i) {
+            if (root->child[i]) return false;
+        }
+        delete root;
+        return true;
+    }
+
+    int index = root->getIndex(key[depth]);
+    if (index == -1 || !root->child[index]) return false;
+
+    bool shouldDelete = deleteFromTrie(root->child[index], key, depth + 1);
+
+    if (shouldDelete) {
+        root->child[index] = nullptr;
+        if (!root->wordEnd && root->canciones.empty()) {
+            for (int i = 0; i < 57; ++i) {
+                if (root->child[i]) return false;
+            }
+            delete root;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void collectWords(TrieNode* curr, string currentPrefix, vector<Cancion*>& result) {
+    if (!curr) return;
+
+    if (curr->wordEnd) {
+        result.insert(result.end(), curr->canciones.begin(), curr->canciones.end());
+    }
+
+    for (int i = 0; i < 76; ++i) {
+        if (curr->child[i]) {
+            char nextChar;
+            if (i < 26) {
+                nextChar = 'a' + i;
+            } else if (i < 52) {
+                nextChar = 'A' + (i - 26);
+            } else if (i == 52) {
+                nextChar = ' ';
+            } else if (i == 53) {
+                nextChar = '\'';
+            } else if (i == 54) {
+                nextChar = '-';
+            } else if (i == 55) {
+                nextChar = '.';
+            } else if (i >= 56 && i <= 65) {
+                nextChar = '0' + (i - 56);
+            } else if (i == 66) {
+                nextChar = '!';
+            } else if (i == 67) {
+                nextChar = '@';
+            } else if (i == 68) {
+                nextChar = '#';
+            } else if (i == 69) {
+                nextChar = '$';
+            } else if (i == 70) {
+                nextChar = '%';
+            } else if (i == 71) {
+               nextChar = '_';
+            } else if (i == 72) {
+                nextChar = '&';
+            } else if (i == 73) {
+                nextChar = '*';
+            } else if (i == 74) {
+                nextChar = '(';
+            } else if (i == 75) {
+                nextChar = ')';
+            }
+
+            collectWords(curr->child[i], currentPrefix + nextChar, result);
+        }
+    }
+}
+
+Cancion* getWordsWithPrefix(TrieNode* root, const string& prefix) {
+    TrieNode* curr = root;
+    vector<Cancion*> result;
+    int select;
+
+    for (char c : prefix) {
+        int index = curr->getIndex(c);
+        if (index == -1 || !curr->child[index]) {
+            cout << "NO encontrado." << endl;
+            return NULL;
+        }
+        curr = curr->child[index];
+    }
+
+collectWords(curr, prefix, result);
+
+if (result.empty()) {
+    cout << "No se encontraron coincidencias: " << prefix << endl;
+} else {
+    int j = 1;
+    for (int i = 0; i < result.size(); i++) {
+        cout << "|" << j << "| ";
+        cout << result[i]->getArtistName() <<" - "<< result[i]->getTrackName() << endl;
+        cout << "------------------------" << endl;
+        j++;
+    }
+    cin >> select;
+
+    if (select < 1 || select > result.size()) {
+        cout << "Selección no válida." << endl;
+        return NULL;
+    }
+
+    result[select - 1]->imprimir();
+}
+return result[select - 1];
+}
+
+class NodoLista {
 public:
-    Trie() {
-        raiz = new NodoTrie();
+    Cancion cancion;
+    NodoLista* siguiente;
+
+    NodoLista(const Cancion& c) : cancion(c), siguiente(nullptr) {}
+};
+
+class ListaReproduccion {
+private:
+    NodoLista* cabeza;
+    NodoLista* ultimo;
+    int tamano;
+public:
+    ListaReproduccion() : cabeza(nullptr), ultimo(nullptr), tamano(0) {}
+
+    void agregar_cancion(const Cancion& c) {
+        NodoLista* nuevo = new NodoLista(c);
+        if (!cabeza) {
+            cabeza = ultimo = nuevo;
+        } else {
+            ultimo->siguiente = nuevo;
+            ultimo = nuevo;
+        }
+        tamano++;
     }
 
-    // Insertar canción en el trie
-    void insertar(const string &nombreCancion, Cancion* cancion) {
-        NodoTrie* nodo = raiz;
-        for (char c : nombreCancion) {
-            if (nodo->hijos.find(c) == nodo->hijos.end()) {
-                nodo->hijos[c] = new NodoTrie();
+    void eliminar_cancion(const string& nombreCancion) {
+        NodoLista* temp = cabeza;
+        NodoLista* anterior = nullptr;
+
+        while (temp && temp->cancion.getTrackName() != nombreCancion) {
+            anterior = temp;
+            temp = temp->siguiente;
+        }
+
+        if (temp) {
+            if (anterior) {
+                anterior->siguiente = temp->siguiente;
+            } else {
+                cabeza = temp->siguiente;
             }
-            nodo = nodo->hijos[c];
-        }
-        nodo->canciones.push_back(cancion);
-    }
-
-    // Buscar canciones por prefijo
-    vector<Cancion*> buscarPorPrefijo(const string &prefijo) {
-        NodoTrie* nodo = raiz;
-        vector<Cancion*> resultados;
-        for (char c : prefijo) {
-            if (nodo->hijos.find(c) == nodo->hijos.end()) {
-                return resultados;
-            }
-            nodo = nodo->hijos[c];
-        }
-        recolectarCanciones(nodo, resultados);
-        return resultados;
-    }
-
-    // Recolectar canciones de los nodos
-    void recolectarCanciones(NodoTrie* nodo, vector<Cancion*> &resultados) {
-        if (!nodo) return;
-        for (Cancion* cancion : nodo->canciones) {
-            resultados.push_back(cancion);
-        }
-        for (auto& hijo : nodo->hijos) {
-            recolectarCanciones(hijo.second, resultados);
+            delete temp;
+            tamano--;
+            cout << "Canción eliminada: " << nombreCancion << endl;
+        } else {
+            cout << "Canción no encontrada: " << nombreCancion << endl;
         }
     }
 
-    // Buscar canción por nombre exacto
-    Cancion* buscarPorNombreExacto(const string &nombreCancion) {
-        NodoTrie* nodo = raiz;
-        for (char c : nombreCancion) {
-            if (nodo->hijos.find(c) == nodo->hijos.end()) {
-                return nullptr;
-            }
-            nodo = nodo->hijos[c];
+    void cambiar_orden(int posicion_actual, int nueva_posicion) {
+        if (posicion_actual < 0 || posicion_actual >= tamano || nueva_posicion < 0 || nueva_posicion >= tamano) {
+            cout << "Posición no válida.\n";
+            return;
         }
-        return nodo->canciones.empty() ? nullptr : nodo->canciones[0];
+
+        if (posicion_actual == nueva_posicion) return;
+
+        NodoLista* temp = cabeza;
+        NodoLista* anterior_actual = nullptr;
+
+        for (int i = 0; i < posicion_actual; ++i) {
+            anterior_actual = temp;
+            temp = temp->siguiente;
+        }
+        NodoLista* cancion_a_mover = temp;
+
+        if (anterior_actual) {
+            anterior_actual->siguiente = cancion_a_mover->siguiente;
+        } else {
+            cabeza = cancion_a_mover->siguiente;
+        }
+
+        temp = cabeza;
+        NodoLista* anterior_nueva = nullptr;
+        for (int i = 0; i < nueva_posicion; ++i) {
+            anterior_nueva = temp;
+            temp = temp->siguiente;
+        }
+
+        if (anterior_nueva) {
+            cancion_a_mover->siguiente = anterior_nueva->siguiente;
+            anterior_nueva->siguiente = cancion_a_mover;
+        } else {
+            cancion_a_mover->siguiente = cabeza;
+            cabeza = cancion_a_mover;
+        }
+
+        cout << "La canción ha sido movida de la posición " << posicion_actual << " a " << nueva_posicion << endl;
+    }
+
+    void imprimirCanciones() const {
+        NodoLista* temp = cabeza;
+        while (temp) {
+            cout << "Artista: " << temp->cancion.getArtistName()
+                 << ", Título: " << temp->cancion.getTrackName() << endl;
+            temp = temp->siguiente;
+        }
+    }
+
+    NodoLista* obtenerCabeza() {
+        return cabeza;
+    }
+
+    void llenarTrie(TrieNode* root) {
+        NodoLista* temp = cabeza;
+        while (temp) {
+            insertKey(root, &temp->cancion, temp->cancion.getArtistName()); // Llenamos el trie con el nombre de la canción
+            temp = temp->siguiente;
+        }
+    }
+
+    ~ListaReproduccion() {
+        while (cabeza) {
+            NodoLista* temp = cabeza;
+            cabeza = cabeza->siguiente;
+            delete temp;
+        }
     }
 };
 
-// Función para convertir caracteres especiales
-string convertirCaracteres(const string &texto) {
-    map<string, string> reemplazos = {
-        {"├í", "á"}, {"├®", "é"}, {"├¡", "í"}, {"├│", "ó"}, {"├║", "ú"},
-        {"├▒", "ñ"}, {"├ü", "ü"}, {"├Á", "Á"}, {"├É", "É"}, {"├Í", "Í"},
-        {"├Ó", "Ó"}, {"├Ú", "Ú"}, {"├Ñ", "Ñ"}
-    };
+void freeTrie(TrieNode* node) {
+    if (!node) return;
 
-    string textoConvertido = texto;
-    for (const auto &par : reemplazos) {
-        size_t pos = 0;
-        while ((pos = textoConvertido.find(par.first, pos)) != string::npos) {
-            textoConvertido.replace(pos, par.first.length(), par.second);
-            pos += par.second.length();
+    for (int i = 0; i < 76; ++i) {
+        if (node->child[i]) {
+            freeTrie(node->child[i]);
         }
     }
-    return textoConvertido;
+    delete node;
 }
 
-// Función para dividir líneas CSV respetando comillas dobles
-vector<string> dividirLineaCSV(const string &linea) {
-    vector<string> campos;
-    string campo;
-    bool dentroDeComillas = false;
-
-    for (char c : linea) {
-        if (c == '"' && (campo.empty() || campo.back() != '\\')) {
-            dentroDeComillas = !dentroDeComillas;
-        } else if (c == ',' && !dentroDeComillas) {
-            campos.push_back(campo);
-            campo.clear();
-        } else {
-            campo += c;
+string limpiarCadena(const string& input) {
+    string resultado;
+    for (char c : input) {
+        switch (c) {
+            case 'á': case 'Á': resultado += 'a'; break;
+            case 'é': case 'É': resultado += 'e'; break;
+            case 'í': case 'Í': resultado += 'i'; break;
+            case 'ó': case 'Ó': resultado += 'o'; break;
+            case 'ú': case 'Ú': resultado += 'u'; break;
+            case 'ñ': case 'Ñ': resultado += 'n'; break;
+            case 'ç': case 'Ç': resultado += 'c'; break;
+            default:
+                if (isalnum(c) || isspace(c) || c == '-' || c == '\'' || c == '!') {
+                    resultado += c;
+                }
+                break;
         }
     }
-    campos.push_back(campo); // Agregar último campo
-    return campos;
+    return resultado;
 }
 
-// Leer archivo CSV y cargar canciones en lista enlazada y trie
-void cargarArchivoCSV(const string &nombreArchivo, Trie &trie) {
+void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieNode* root) {
     ifstream archivo(nombreArchivo);
     if (!archivo.is_open()) {
-        cerr << "Error al abrir el archivo." << endl;
+        cout << "No se pudo abrir el archivo.\n";
         return;
     }
 
     string linea;
-    getline(archivo, linea); // Leer encabezado y descartarlo
 
-    int contador = 0;
-    while (getline(archivo, linea) && contador < 1000) { // Solo las primeras 1000 canciones
-        vector<string> campos = dividirLineaCSV(linea);
-        if (campos.size() < 3) { // Validar que haya al menos índice, artista y canción
-            cerr << "Línea malformada: " << linea << endl;
-            continue;
-        }
+    if (getline(archivo, linea)) {
+    }
 
-        // Asignar los valores de la línea CSV a los atributos de Cancion
-        int indice = stoi(campos[0]); // Convertir el índice a entero
-        string artistName = convertirCaracteres(campos[1]);
-        string trackName = convertirCaracteres(campos[2]);
-        string trackId = convertirCaracteres(campos[3]);
-        int popularity = stoi(campos[4]);
-        int year = stoi(campos[5]);
-        string genre = convertirCaracteres(campos[6]);
-        float danceability = stof(campos[7]);
-        float energy = stof(campos[8]);
-        int key = stoi(campos[9]);
-        float loudness = stof(campos[10]);
-        bool mode = (stoi(campos[11]) != 0);
-        float speechiness = stof(campos[12]);
-        float acousticness = stof(campos[13]);
-        float instrumentalness = stof(campos[14]);
-        float liveness = stof(campos[15]);
-        float valence = stof(campos[16]);
-        float tempo = stof(campos[17]);
-        int duration_ms = stoi(campos[18]);
-        int time_signature = stoi(campos[19]);
+    while (getline(archivo, linea)) {
+        stringstream ss(linea);
+        string dummy, artist_name, track_name, track_id, genre;
+        int popularity, year, key, duration_ms, time_signature;
+        float danceability, energy, loudness, speechiness, acousticness;
+        float instrumentalness, liveness, valence, tempo;
+        bool mode;
 
-        // Crear la canción y agregarla al trie
-        Cancion *cancion = new Cancion(indice, artistName, trackName, trackId, popularity, year,
-                                      genre, danceability, energy, key, loudness, mode,
-                                      speechiness, acousticness, instrumentalness, liveness,
-                                      valence, tempo, duration_ms, time_signature);
+        getline(ss, dummy, ',');
+        getline(ss, artist_name, ',');
+        getline(ss, track_name, ',');
+        getline(ss, track_id, ',');
+        ss >> popularity;
+        ss.ignore(1);
+        ss >> year;
+        ss.ignore(1);
+        getline(ss, genre, ',');
+        ss >> danceability;
+        ss.ignore(1);
+        ss >> energy;
+        ss.ignore(1);
+        ss >> key;
+        ss.ignore(1);
+        ss >> loudness;
+        ss.ignore(1);
+        ss >> mode;
+        ss.ignore(1);
+        ss >> speechiness;
+        ss.ignore(1);
+        ss >> acousticness;
+        ss.ignore(1);
+        ss >> instrumentalness;
+        ss.ignore(1);
+        ss >> liveness;
+        ss.ignore(1);
+        ss >> valence;
+        ss.ignore(1);
+        ss >> tempo;
+        ss.ignore(1);
+        ss >> duration_ms;
+        ss.ignore(1);
+        ss >> time_signature;
 
-        trie.insertar(trackName, cancion);
-        contador++;
+        artist_name = limpiarCadena(artist_name);
+        track_name = limpiarCadena(track_name);
+        genre = limpiarCadena(genre);
+
+        Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
+                        danceability, energy, key, loudness, mode, speechiness,
+                        acousticness, instrumentalness, liveness, valence, tempo,
+                        duration_ms, time_signature);
+
+        lista.agregar_cancion(cancion);
     }
 
     archivo.close();
 }
 
-// Función para mostrar menú y realizar búsqueda
-void menu(Trie &trie) {
-    int opcion;
-    string busqueda;
-    while (true) {
-        cout << "\n1. Buscar canción por prefijo" << endl;
-        cout << "2. Buscar canción por nombre exacto" << endl;
-        cout << "3. Salir" << endl;
-        cout << "Seleccione una opción: ";
-        cin >> opcion;
-
-        switch (opcion) {
-            case 1:
-                cout << "Ingrese el prefijo para buscar canciones: ";
-                cin >> busqueda;
-                {
-                    vector<Cancion*> canciones = trie.buscarPorPrefijo(busqueda);
-                    if (canciones.empty()) {
-                        cout << "No se encontraron canciones." << endl;
-                    } else {
-                        for (auto* cancion : canciones) {
-                            cancion->imprimir();
-                        }
-                    }
-                }
-                break;
-            case 2:
-                cout << "Ingrese el nombre exacto de la canción: ";
-                cin >> busqueda;
-                {
-                    Cancion* cancion = trie.buscarPorNombreExacto(busqueda);
-                    if (cancion) {
-                        cancion->imprimir();
-                    } else {
-                        cout << "Canción no encontrada." << endl;
-                    }
-                }
-                break;
-            case 3:
-                return;
-            default:
-                cout << "Opción no válida." << endl;
-                break;
-        }
-    }
-}
-
 int main() {
-    Trie trie;
-    cargarArchivoCSV("spotify_data.csv", trie);
-    menu(trie);
+    SetConsoleOutputCP(CP_UTF8);
+    ListaReproduccion lista;
+    TrieNode* root = new TrieNode();
+
+    leerArchivoCSV("spotify_data.csv", lista, root);
+    lista.llenarTrie(root);
+    getWordsWithPrefix(root, "Hill");
+    //Imprimir las canciones para verificar que fueron cargadas
+    //lista.imprimirCanciones();
+    /*
+    // Ejemplo de agregar, eliminar y cambiar de posición
+    Cancion nuevaCancion("Nuevo Artista", "Nueva Cancion", "1234", 90, 2021, "Pop", 0.8, 0.9, 5, -5.0, true, 0.1, 0.2, 0.0, 0.3, 0.5, 120.0, 200000, 4);
+    lista.agregar_cancion(nuevaCancion);
+    lista.imprimirCanciones();
+    lista.eliminar_cancion("Nueva Cancion");
+    lista.cambiar_orden(0, 2);
+    lista.imprimirCanciones();*/
+
+
+
+    freeTrie(root);
+
     return 0;
 }
+
+
+
 
