@@ -9,6 +9,8 @@
 #include <list>
 using namespace std;
 
+#define MAX_KEYS 4  // Número máximo de claves por nodo en el Árbol B
+
 class Cancion {
 private:
     string artist_name;
@@ -459,6 +461,118 @@ public:
     }
 };
 
+// Nodo del Árbol B
+struct BTreeNode {
+    vector<Cancion*> keys;   // Punteros a las canciones
+    vector<BTreeNode*> children; // Punteros a los hijos
+    bool isLeaf;
+    
+    BTreeNode(bool leaf) : isLeaf(leaf) {}
+};
+
+// Función para comparar canciones por atributos específicos (ej: danceability, energy)
+bool compareByAttribute(Cancion* a, Cancion* b, int attribute) {
+    switch (attribute) {
+        case 1: return a->getDanceability() < b->getDanceability(); // Comparar por danceability
+        case 2: return a->getEnergy() < b->getEnergy();             // Comparar por energy
+        case 3: return a->getLoudness() < b->getLoudness();         // Comparar por loudness
+        case 4: return a->getSpeechiness() < b->getSpeechiness();   // Comparar por speechiness
+        case 5: return a->getAcousticness() < b->getAcousticness(); // Comparar por acousticness
+        case 6: return a->getInstrumentalness() < b->getInstrumentalness(); // Comparar por instrumentalness
+        case 7: return a->getLiveness() < b->getLiveness();         // Comparar por liveness
+        case 8: return a->getValence() < b->getValence();           // Comparar por valence
+        case 9: return a->getTempo() < b->getTempo();               // Comparar por tempo
+        case 10: return a->getDurationMs() < b->getDurationMs();    // Comparar por duration_ms
+        default: return false;  // Si no se pasa un atributo válido, no comparar
+    }
+}
+
+// Declaración de la función splitChild antes de usarla en insertNonFull
+void splitChild(BTreeNode* parent, int index);
+// Crear un nuevo nodo del Árbol B
+BTreeNode* createBTreeNode(bool isLeaf) {
+    BTreeNode* node = new BTreeNode(isLeaf);
+    return node;
+}
+
+// Función de inserción en el Árbol B
+void insertNonFull(BTreeNode* node, Cancion* cancion, int attribute) {
+    int i = node->keys.size() - 1;
+
+    // Si el nodo es una hoja, insertamos la canción directamente
+    if (node->isLeaf) {
+        while (i >= 0 && compareByAttribute(node->keys[i], cancion, attribute)) {
+            i--;
+        }
+        node->keys.insert(node->keys.begin() + i + 1, cancion);
+    } else {
+        // Si el nodo no es una hoja, debemos encontrar el hijo adecuado
+        while (i >= 0 && compareByAttribute(node->keys[i], cancion, attribute)) {
+            i--;
+        }
+        i++;
+        // Si el hijo está lleno, lo dividimos
+        if (node->children[i]->keys.size() == MAX_KEYS) {
+            // Dividir el hijo
+            splitChild(node, i);
+            if (compareByAttribute(node->keys[i], cancion, attribute)) {
+                i++;
+            }
+        }
+        insertNonFull(node->children[i], cancion, attribute);
+    }
+}
+
+// Dividir un nodo del Árbol B
+void splitChild(BTreeNode* parent, int index) {
+    BTreeNode* fullChild = parent->children[index];
+    BTreeNode* newChild = createBTreeNode(fullChild->isLeaf);
+    int mid = MAX_KEYS / 2;
+
+    // Mover la mitad de las claves al nuevo hijo
+    newChild->keys.assign(fullChild->keys.begin() + mid + 1, fullChild->keys.end());
+    fullChild->keys.resize(mid);
+
+    // Mover los hijos del nodo completo
+    if (!fullChild->isLeaf) {
+        newChild->children.assign(fullChild->children.begin() + mid + 1, fullChild->children.end());
+        fullChild->children.resize(mid + 1);
+    }
+
+    // Insertar la nueva clave en el nodo padre
+    parent->keys.insert(parent->keys.begin() + index, fullChild->keys[mid]);
+    parent->children.insert(parent->children.begin() + index + 1, newChild);
+}
+
+// Función de inserción en el Árbol B (si el nodo raíz está lleno)
+void insert(BTreeNode*& root, Cancion* cancion, int attribute) {
+    if (root->keys.size() == MAX_KEYS) {
+        // Si el nodo raíz está lleno, creamos un nuevo nodo raíz
+        BTreeNode* newRoot = createBTreeNode(false);
+        newRoot->children.push_back(root);
+        splitChild(newRoot, 0);
+        root = newRoot;
+    }
+    insertNonFull(root, cancion, attribute);
+}
+
+// Función de búsqueda en el Árbol B
+bool search(BTreeNode* node, Cancion* cancion, int attribute) {
+    int i = 0;
+    while (i < node->keys.size() && compareByAttribute(node->keys[i], cancion, attribute)) {
+        i++;
+    }
+
+    if (i < node->keys.size() && node->keys[i] == cancion) {
+        return true;
+    }
+
+    if (node->isLeaf) {
+        return false;
+    }
+
+    return search(node->children[i], cancion, attribute);
+}
 string limpiarCadena(const string& input) {
     string resultado;
     for (char c : input) {
@@ -566,14 +680,30 @@ int main() {
     TrieNode* root = new TrieNode();
     TablaHash tablaHash(100);  // Tabla hash con capacidad 100
 
+
+    
+    // Crear el Árbol B (para ordenar por un atributo, por ejemplo, "danceability")
+    BTreeNode* bTreeRoot = createBTreeNode(true);  // Nodo raíz de tipo hoja
+
     // Leer el archivo CSV y llenar las estructuras
-    leerArchivoCSV("spotify_data.csv",  tablaHash, lista, root);
-    // Mostrar canciones por género
-   
-    tablaHash.mostrarPorGenero("pop");
-     lista.llenarTrie(root);
-    getWordsWithPrefix(root, "Hill");
-    freeTrie(root);
+    leerArchivoCSV("spotify_data.csv", tablaHash, lista, root);
+
+    // Insertar canciones en el Árbol B, ordenadas por el atributo danceability
+    for (NodoLista* temp = lista.obtenerCabeza(); temp != nullptr; temp = temp->siguiente) {
+        insert(bTreeRoot, &temp->cancion, 1);  // 1 corresponde a danceability
+    }
+
+;
+
+    // Mostrar canciones usando el Árbol B (búsqueda por "danceability")
+    Cancion* cancionBuscada = new Cancion("Artist", "Track", "ID", 0, 0, "pop", 0.8, 0.7, 5, 0.2, true, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 200000, 4);
+    if (search(bTreeRoot, cancionBuscada, 1)) {
+        cout << "Canción encontrada por danceability." << endl;
+    } else {
+        cout << "Canción no encontrada." << endl;
+    }
+
+    
 
     return 0;
 }
