@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <algorithm>
 #include <locale>
-
+#include <list>
 using namespace std;
 
 class Cancion {
@@ -397,6 +397,57 @@ void freeTrie(TrieNode* node) {
     }
     delete node;
 }
+class TablaHash {
+private:
+    vector<list<NodoLista*>> tabla;
+    int capacidad;
+
+public:
+    TablaHash(int cap) : capacidad(cap) {
+        tabla.resize(capacidad);  // Inicializar la tabla con listas vacías
+    }
+
+    int hashFunction(const string& key) {
+        int hash = 0;
+        for (char c : key) {
+            hash = (hash + int(c)) % capacidad;
+        }
+        return hash;
+    }
+
+    void insertar(NodoLista* nodo, const string& genre) {
+        int index = hashFunction(genre);  // Calcular el índice usando el género
+        tabla[index].push_back(nodo);  // Insertar el puntero al nodo de la canción
+    }
+
+    void mostrarPorGenero(const string& genre) {
+        vector<Cancion*> canciones;
+
+        // Recorrer todos los "buckets" (listas) para recolectar las canciones del género especificado
+        for (int i = 0; i < capacidad; ++i) {
+            for (auto& nodo : tabla[i]) {
+                if (nodo->cancion.getGenre() == genre) {
+                    canciones.push_back(&nodo->cancion); // Agregar las canciones del género
+                }
+            }
+        }
+
+        if (!canciones.empty()) {
+            // Ordenar las canciones por 'track_name' (o por otro criterio si lo prefieres)
+            sort(canciones.begin(), canciones.end(), [](Cancion* a, Cancion* b) {
+                return a->getTrackName() < b->getTrackName(); // Orden ascendente por nombre de la canción
+            });
+
+            cout << "Canciones del género '" << genre << "':\n";
+            for (auto& cancion : canciones) {
+                cancion->imprimir();
+                cout << "-------------------------\n";
+            }
+        } else {
+            cout << "No se encontraron canciones en el género '" << genre << "'.\n";
+        }
+    }
+};
 
 string limpiarCadena(const string& input) {
     string resultado;
@@ -419,7 +470,7 @@ string limpiarCadena(const string& input) {
     return resultado;
 }
 
-void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieNode* root) {
+void leerArchivoCSV(const string& nombreArchivo, TablaHash& tablaHash) {
     ifstream archivo(nombreArchivo);
     if (!archivo.is_open()) {
         cout << "No se pudo abrir el archivo.\n";
@@ -427,9 +478,7 @@ void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieN
     }
 
     string linea;
-
-    if (getline(archivo, linea)) {
-    }
+    getline(archivo, linea);  // Ignorar la primera línea (cabecera)
 
     while (getline(archivo, linea)) {
         stringstream ss(linea);
@@ -448,34 +497,8 @@ void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieN
         ss >> year;
         ss.ignore(1);
         getline(ss, genre, ',');
-        ss >> danceability;
-        ss.ignore(1);
-        ss >> energy;
-        ss.ignore(1);
-        ss >> key;
-        ss.ignore(1);
-        ss >> loudness;
-        ss.ignore(1);
-        ss >> mode;
-        ss.ignore(1);
-        ss >> speechiness;
-        ss.ignore(1);
-        ss >> acousticness;
-        ss.ignore(1);
-        ss >> instrumentalness;
-        ss.ignore(1);
-        ss >> liveness;
-        ss.ignore(1);
-        ss >> valence;
-        ss.ignore(1);
-        ss >> tempo;
-        ss.ignore(1);
-        ss >> duration_ms;
-        ss.ignore(1);
-        ss >> time_signature;
 
-        artist_name = limpiarCadena(artist_name);
-        track_name = limpiarCadena(track_name);
+        // Limpiar el género
         genre = limpiarCadena(genre);
 
         Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
@@ -483,7 +506,8 @@ void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieN
                         acousticness, instrumentalness, liveness, valence, tempo,
                         duration_ms, time_signature);
 
-        lista.agregar_cancion(cancion);
+        NodoLista* nodo = new NodoLista(cancion);
+        tablaHash.insertar(nodo, genre);  // Insertar en la tabla hash según el género
     }
 
     archivo.close();
@@ -491,30 +515,16 @@ void leerArchivoCSV(const string& nombreArchivo, ListaReproduccion& lista, TrieN
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
-    ListaReproduccion lista;
-    TrieNode* root = new TrieNode();
 
-    leerArchivoCSV("spotify_data.csv", lista, root);
-    lista.llenarTrie(root);
-    getWordsWithPrefix(root, "Hill");
-    //Imprimir las canciones para verificar que fueron cargadas
-    //lista.imprimirCanciones();
-    /*
-    // Ejemplo de agregar, eliminar y cambiar de posición
-    Cancion nuevaCancion("Nuevo Artista", "Nueva Cancion", "1234", 90, 2021, "Pop", 0.8, 0.9, 5, -5.0, true, 0.1, 0.2, 0.0, 0.3, 0.5, 120.0, 200000, 4);
-    lista.agregar_cancion(nuevaCancion);
-    lista.imprimirCanciones();
-    lista.eliminar_cancion("Nueva Cancion");
-    lista.cambiar_orden(0, 2);
-    lista.imprimirCanciones();*/
+    // Crear tabla hash con capacidad suficiente
+    TablaHash tablaHash(82);  // Aquí puedes modificar el tamaño de la tabla
 
+    // Leer archivo CSV y llenar la tabla hash
+    leerArchivoCSV("spotify_data.csv", tablaHash);
 
-
-    freeTrie(root);
+    // Mostrar canciones por género
+    tablaHash.mostrarPorGenero("rock");
+  
 
     return 0;
 }
-
-
-
-
