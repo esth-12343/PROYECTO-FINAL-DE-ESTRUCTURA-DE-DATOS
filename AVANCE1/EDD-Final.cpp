@@ -397,6 +397,16 @@ void freeTrie(TrieNode* node) {
     }
     delete node;
 }
+
+// Función para validar datos numéricos de tipo float
+float validarFloat(const string& str) {
+    try {
+        return stof(str);  // Intentar convertir la cadena a float
+    } catch (...) {
+        return 0.0f;  // Si la conversión falla, asigna 0.0 como valor predeterminado
+    }
+}
+
 class TablaHash {
 private:
     vector<list<NodoLista*>> tabla;
@@ -470,7 +480,7 @@ string limpiarCadena(const string& input) {
     return resultado;
 }
 
-void leerArchivoCSV(const string& nombreArchivo, TablaHash& tablaHash) {
+void leerArchivoCSV(const string& nombreArchivo,TablaHash& tablaHash, ListaReproduccion& lista, TrieNode* root ) {
     ifstream archivo(nombreArchivo);
     if (!archivo.is_open()) {
         cout << "No se pudo abrir el archivo.\n";
@@ -478,7 +488,7 @@ void leerArchivoCSV(const string& nombreArchivo, TablaHash& tablaHash) {
     }
 
     string linea;
-    getline(archivo, linea);  // Ignorar la primera línea (cabecera)
+    if (getline(archivo, linea)) {}  // Saltar encabezados
 
     while (getline(archivo, linea)) {
         stringstream ss(linea);
@@ -497,34 +507,73 @@ void leerArchivoCSV(const string& nombreArchivo, TablaHash& tablaHash) {
         ss >> year;
         ss.ignore(1);
         getline(ss, genre, ',');
+        ss >> danceability;
+        ss.ignore(1);
+        ss >> energy;
+        ss.ignore(1);
+        ss >> key;
+        ss.ignore(1);
+        ss >> loudness;
+        ss.ignore(1);
+        ss >> mode;
+        ss.ignore(1);
+        ss >> speechiness;
+        ss.ignore(1);
+        ss >> acousticness;
+        ss.ignore(1);
+        ss >> instrumentalness;
+        ss.ignore(1);
+        ss >> liveness;
+        ss.ignore(1);
+        ss >> valence;
+        ss.ignore(1);
+        ss >> tempo;
+        ss.ignore(1);
+        ss >> duration_ms;
+        ss.ignore(1);
+        ss >> time_signature;
 
-        // Limpiar el género
+        // Limpiar y normalizar los datos
+        artist_name = limpiarCadena(artist_name);
+        track_name = limpiarCadena(track_name);
         genre = limpiarCadena(genre);
 
+        // Crear la canción y agregarla a la lista de reproducción
         Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
                         danceability, energy, key, loudness, mode, speechiness,
                         acousticness, instrumentalness, liveness, valence, tempo,
                         duration_ms, time_signature);
 
+
+
+        // Insertar en la tabla hash
         NodoLista* nodo = new NodoLista(cancion);
-        tablaHash.insertar(nodo, genre);  // Insertar en la tabla hash según el género
+
+        tablaHash.insertar(nodo, genre);
+        
+        lista.agregar_cancion(cancion);
+
     }
 
     archivo.close();
 }
 
+
 int main() {
     SetConsoleOutputCP(CP_UTF8);
 
-    // Crear tabla hash con capacidad suficiente
-    TablaHash tablaHash(82);  // Aquí puedes modificar el tamaño de la tabla
+    ListaReproduccion lista;
+    TrieNode* root = new TrieNode();
+    TablaHash tablaHash(100);  // Tabla hash con capacidad 100
 
-    // Leer archivo CSV y llenar la tabla hash
-    leerArchivoCSV("spotify_data.csv", tablaHash);
-
+    // Leer el archivo CSV y llenar las estructuras
+    leerArchivoCSV("spotify_data.csv",  tablaHash, lista, root);
     // Mostrar canciones por género
-    tablaHash.mostrarPorGenero("rock");
-  
+   
+    tablaHash.mostrarPorGenero("pop");
+     lista.llenarTrie(root);
+    getWordsWithPrefix(root, "Hill");
+    freeTrie(root);
 
     return 0;
 }
