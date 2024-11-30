@@ -7,7 +7,11 @@
 #include <algorithm>
 #include <locale>
 #include <list>
+#include <iomanip>
+
 using namespace std;
+
+#define MAX_KEYS 4  // Número máximo de claves por nodo en el Árbol B
 
 class Cancion {
 private:
@@ -87,62 +91,6 @@ void Cancion::imprimir() {
     cout << "|Tempo| " << tempo << endl;
     cout << "|Duration MS| " << duration_ms << endl;
     cout << "|Time SIGNATURE| " << time_signature << endl;
-}
-
-Cancion* MostrarSeleccion(vector<Cancion*> result) {
-    if (result.empty()) {
-        cout << "No se encontraron coincidencias." << endl;
-        return nullptr;
-    }
-
-    const int cancionesPorPagina = 50;
-    int select = 0;
-
-    int totalCanciones = result.size();
-    int indiceActual = 0;
-
-    while (indiceActual < totalCanciones) {
-        for (int i = indiceActual; i < min(indiceActual + cancionesPorPagina, totalCanciones); ++i) {
-            cout << "|" << (i + 1) << "| ";
-            cout << result[i]->getArtistName() << " - " << result[i]->getTrackName() << endl;
-            cout << "------------------------" << endl;
-        }
-
-        indiceActual += cancionesPorPagina;
-
-        if (indiceActual < totalCanciones) {
-            cout << "Presione '+' para mostrar más o elija una canción (1-" << totalCanciones << "): ";
-        } else {
-            cout << "Elija una canción (1-" << totalCanciones << "): ";
-        }
-
-        string input;
-        getline(cin, input);
-
-        if (!input.empty() && all_of(input.begin(), input.end(), ::isdigit)) {
-            select = stoi(input);
-            if (select >= 1 && select <= totalCanciones) {
-                break;
-            } else {
-                cout << "Selección no válida. Por favor, intente de nuevo." << endl;
-                indiceActual -= cancionesPorPagina; 
-            }
-        } else if (input == "+") {
-            // Si el usuario ingresa '+', continuar mostrando más canciones
-            continue;
-        } else {
-            cout << "Entrada no válida. Por favor, intente de nuevo." << endl;
-            indiceActual -= cancionesPorPagina; 
-        }
-    }
-
-    if (select < 1 || select > totalCanciones) {
-        cout << "No se realizó una selección válida." << endl;
-        return nullptr;
-    }
-
-    result[select - 1]->imprimir();
-    return result[select - 1];
 }
 
 struct TrieNode {
@@ -287,19 +235,39 @@ void collectWords(TrieNode* curr, string currentPrefix, vector<Cancion*>& result
 Cancion* getWordsWithPrefix(TrieNode* root, const string& prefix) {
     TrieNode* curr = root;
     vector<Cancion*> result;
+    int select;
 
     for (char c : prefix) {
         int index = curr->getIndex(c);
         if (index == -1 || !curr->child[index]) {
-            cout << "No encontrado." << endl;
-            return nullptr;
+            cout << "NO encontrado." << endl;
+            return NULL;
         }
         curr = curr->child[index];
     }
 
-    collectWords(curr, prefix, result);
-    Cancion* seleccionada = MostrarSeleccion(result);
-    return seleccionada;
+collectWords(curr, prefix, result);
+
+if (result.empty()) {
+    cout << "No se encontraron coincidencias: " << prefix << endl;
+} else {
+    int j = 1;
+    for (int i = 0; i < result.size(); i++) {
+        cout << "|" << j << "| ";
+        cout << result[i]->getArtistName() <<" - "<< result[i]->getTrackName() << endl;
+        cout << "------------------------" << endl;
+        j++;
+    }
+    cin >> select;
+
+    if (select < 1 || select > result.size()) {
+        cout << "Selección no válida." << endl;
+        return NULL;
+    }
+
+    result[select - 1]->imprimir();
+}
+return result[select - 1];
 }
 
 class NodoLista {
@@ -409,7 +377,7 @@ public:
     void llenarTrie(TrieNode* root) {
         NodoLista* temp = cabeza;
         while (temp) {
-            insertKey(root, &temp->cancion, temp->cancion.getArtistName()); 
+            insertKey(root, &temp->cancion, temp->cancion.getArtistName()); // Llenamos el trie con el nombre de la canción
             temp = temp->siguiente;
         }
     }
@@ -434,11 +402,12 @@ void freeTrie(TrieNode* node) {
     delete node;
 }
 
+// Función para validar datos numéricos de tipo float
 float validarFloat(const string& str) {
     try {
-        return stof(str); 
+        return stof(str);  // Intentar convertir la cadena a float
     } catch (...) {
-        return 0.0f;  
+        return 0.0f;  // Si la conversión falla, asigna 0.0 como valor predeterminado
     }
 }
 
@@ -449,7 +418,7 @@ private:
 
 public:
     TablaHash(int cap) : capacidad(cap) {
-        tabla.resize(capacidad); 
+        tabla.resize(capacidad);  // Inicializar la tabla con listas vacías
     }
 
     int hashFunction(const string& key) {
@@ -461,25 +430,207 @@ public:
     }
 
     void insertar(NodoLista* nodo, const string& genre) {
-        int index = hashFunction(genre); 
-        tabla[index].push_back(nodo);  
+        int index = hashFunction(genre);  // Calcular el índice usando el género
+        tabla[index].push_back(nodo);  // Insertar el puntero al nodo de la canción
     }
 
-    Cancion* mostrarPorGenero(const string& genre) {
+    void mostrarPorGenero(const string& genre) {
         vector<Cancion*> canciones;
 
+        // Recorrer todos los "buckets" (listas) para recolectar las canciones del género especificado
         for (int i = 0; i < capacidad; ++i) {
             for (auto& nodo : tabla[i]) {
                 if (nodo->cancion.getGenre() == genre) {
-                    canciones.push_back(&nodo->cancion);
+                    canciones.push_back(&nodo->cancion); // Agregar las canciones del género
                 }
             }
         }
 
-        Cancion* seleccionada = MostrarSeleccion(canciones);
-        return seleccionada;
+        if (!canciones.empty()) {
+            // Ordenar las canciones por 'track_name' (o por otro criterio si lo prefieres)
+            sort(canciones.begin(), canciones.end(), [](Cancion* a, Cancion* b) {
+                return a->getTrackName() < b->getTrackName(); // Orden ascendente por nombre de la canción
+            });
+
+            cout << "Canciones del género '" << genre << "':\n";
+            for (auto& cancion : canciones) {
+                cancion->imprimir();
+                cout << "-------------------------\n";
+            }
+        } else {
+            cout << "No se encontraron canciones en el género '" << genre << "'.\n";
+        }
     }
 };
+
+// Nodo del Árbol B
+class BTreeNode {
+public:
+    vector<Cancion*> keys;           // Punteros a las canciones
+    vector<BTreeNode*> children;    // Punteros a los hijos
+    bool isLeaf;
+
+    BTreeNode(bool leaf) : isLeaf(leaf) {}
+};
+
+// Comparar canciones por atributos específicos
+bool compareByAttribute(Cancion* a, Cancion* b, int attribute) {
+    switch (attribute) {
+        case 1: return a->getDanceability() < b->getDanceability();
+        case 2: return a->getEnergy() < b->getEnergy();
+        case 3: return a->getLoudness() < b->getLoudness();
+        case 4: return a->getSpeechiness() < b->getSpeechiness();
+        case 5: return a->getAcousticness() < b->getAcousticness();
+        case 6: return a->getInstrumentalness() < b->getInstrumentalness();
+        case 7: return a->getLiveness() < b->getLiveness();
+        case 8: return a->getValence() < b->getValence();
+        case 9: return a->getTempo() < b->getTempo();
+        case 10: return a->getDurationMs() < b->getDurationMs();
+        default: return false;
+    }
+}
+
+// Crear un nuevo nodo del Árbol B
+BTreeNode* createBTreeNode(bool isLeaf) {
+    return new BTreeNode(isLeaf);
+}
+
+// Dividir un nodo del Árbol B
+void splitChild(BTreeNode* parent, int index) {
+    BTreeNode* fullChild = parent->children[index];
+    BTreeNode* newChild = createBTreeNode(fullChild->isLeaf);
+    int mid = MAX_KEYS / 2;
+
+    // Mover la mitad de las claves al nuevo hijo
+    newChild->keys.assign(fullChild->keys.begin() + mid + 1, fullChild->keys.end());
+    fullChild->keys.resize(mid);
+
+    // Mover los hijos del nodo completo
+    if (!fullChild->isLeaf) {
+        newChild->children.assign(fullChild->children.begin() + mid + 1, fullChild->children.end());
+        fullChild->children.resize(mid + 1);
+    }
+
+    // Insertar la nueva clave en el nodo padre
+    parent->keys.insert(parent->keys.begin() + index, fullChild->keys[mid]);
+    parent->children.insert(parent->children.begin() + index + 1, newChild);
+}
+
+// Insertar en un nodo no lleno
+void insertNonFull(BTreeNode* node, Cancion* cancion, int attribute) {
+    int i = node->keys.size() - 1;
+
+    // Si el nodo es una hoja, insertar directamente
+    if (node->isLeaf) {
+        while (i >= 0 && compareByAttribute(cancion, node->keys[i], attribute)) {
+            i--;
+        }
+        node->keys.insert(node->keys.begin() + i + 1, cancion);
+    } else {
+        // Si no es una hoja, encontrar el hijo adecuado
+        while (i >= 0 && compareByAttribute(cancion, node->keys[i], attribute)) {
+            i--;
+        }
+        i++;
+        if (node->children[i]->keys.size() == MAX_KEYS) {
+            splitChild(node, i);
+            if (compareByAttribute(cancion, node->keys[i], attribute)) {
+                i++;
+            }
+        }
+        insertNonFull(node->children[i], cancion, attribute);
+    }
+}
+
+// Insertar en el Árbol B
+void insert(BTreeNode*& root, Cancion* cancion, int attribute) {
+    if (!root) {
+        root = createBTreeNode(true);
+    }
+
+    if (root->keys.size() == MAX_KEYS) {
+        BTreeNode* newRoot = createBTreeNode(false);
+        newRoot->children.push_back(root);
+        splitChild(newRoot, 0);
+        root = newRoot;
+    }
+    insertNonFull(root, cancion, attribute);
+}
+
+// Buscar en el Árbol B
+bool search(BTreeNode* node, Cancion* cancion, int attribute) {
+    if (!node) return false;
+
+    int i = 0;
+    while (i < node->keys.size() && compareByAttribute(cancion, node->keys[i], attribute)) {
+        i++;
+    }
+
+    if (i < node->keys.size() && node->keys[i] == cancion) {
+        return true;
+    }
+
+    return !node->isLeaf && search(node->children[i], cancion, attribute);
+}
+
+void printBTree(BTreeNode* node, int depth = 0, int attribute = 1) {
+    if (!node) return;
+
+    // Recorrer las claves del nodo actual
+    for (int i = node->keys.size() - 1; i >= 0; i--) {
+        // Si no es hoja, imprimir el hijo derecho
+        if (!node->isLeaf) {
+            printBTree(node->children[i + 1], depth + 1, attribute);
+        }
+
+        // Imprimir más atributos de la canción
+        cout << setw(depth * 4) << " "
+             << "Nombre: " << node->keys[i]->getTrackName()
+             << ", Artista: " << node->keys[i]->getGenre();
+
+        // Imprimir el atributo según el criterio de ordenación
+        switch (attribute) {
+            case 1:
+                cout << ", Danceability: " << node->keys[i]->getDanceability();
+                break;
+            case 2:
+                cout << ", Energy: " << node->keys[i]->getEnergy();
+                break;
+            case 3:
+                cout << ", Loudness: " << node->keys[i]->getLoudness();
+                break;
+            case 4:
+                cout << ", Speechiness: " << node->keys[i]->getSpeechiness();
+                break;
+            case 5:
+                cout << ", Acousticness: " << node->keys[i]->getAcousticness();
+                break;
+            case 6:
+                cout << ", Instrumentalness: " << node->keys[i]->getInstrumentalness();
+                break;
+            case 7:
+                cout << ", Liveness: " << node->keys[i]->getLiveness();
+                break;
+            case 8:
+                cout << ", Valence: " << node->keys[i]->getValence();
+                break;
+            case 9:
+                cout << ", Tempo: " << node->keys[i]->getTempo();
+                break;
+            case 10:
+                cout << ", Duration: " << node->keys[i]->getDurationMs();
+                break;
+            default:
+                cout << ", Atributo desconocido";
+        }
+        cout << endl;
+    }
+
+    // Imprimir el hijo izquierdo si no es hoja
+    if (!node->isLeaf) {
+        printBTree(node->children[0], depth + 1, attribute);
+    }
+}
 
 
 string limpiarCadena(const string& input) {
@@ -556,19 +707,24 @@ void leerArchivoCSV(const string& nombreArchivo,TablaHash& tablaHash, ListaRepro
         ss.ignore(1);
         ss >> time_signature;
 
+        // Limpiar y normalizar los datos
         artist_name = limpiarCadena(artist_name);
         track_name = limpiarCadena(track_name);
         genre = limpiarCadena(genre);
 
+        // Crear la canción y agregarla a la lista de reproducción
         Cancion cancion(artist_name, track_name, track_id, popularity, year, genre,
                         danceability, energy, key, loudness, mode, speechiness,
                         acousticness, instrumentalness, liveness, valence, tempo,
                         duration_ms, time_signature);
 
+
+
+        // Insertar en la tabla hash
         NodoLista* nodo = new NodoLista(cancion);
 
         tablaHash.insertar(nodo, genre);
-
+        
         lista.agregar_cancion(cancion);
 
     }
@@ -576,24 +732,21 @@ void leerArchivoCSV(const string& nombreArchivo,TablaHash& tablaHash, ListaRepro
     archivo.close();
 }
 
-
 int main() {
-    SetConsoleOutputCP(CP_UTF8);
-
     ListaReproduccion lista;
+    TablaHash tablaHash(100);
     TrieNode* root = new TrieNode();
-    TablaHash tablaHash(82);
+    BTreeNode* bTreeRoot = nullptr;
 
-    leerArchivoCSV("spotify_data.csv",  tablaHash, lista, root);
-    string select;
-    cout<<"Ingresa :D "<<endl;
-    cin>>select;
-    tablaHash.mostrarPorGenero(select);
-    lista.llenarTrie(root);
-    getWordsWithPrefix(root, select);
-    freeTrie(root);
+    leerArchivoCSV("spotify_data.csv", tablaHash, lista, root);
+
+    // Insertar canciones en el Árbol B (ordenando por un atributo, por ejemplo, danceability)
+    for (NodoLista* temp = lista.obtenerCabeza(); temp != nullptr; temp = temp->siguiente) {
+        insert(bTreeRoot, &temp->cancion, 1); // 1 corresponde a danceability
+    }
+
+    cout << "Árbol B ordenado por danceability:\n";
+    printBTree(bTreeRoot);
 
     return 0;
 }
-
-
